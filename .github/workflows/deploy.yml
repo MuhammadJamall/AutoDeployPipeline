@@ -12,6 +12,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug - show OIDC token claims
+        run: |
+          TOKEN_VALUE=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          echo "$TOKEN_VALUE" | cut -d. -f2 | python3 -c "import sys, base64, json; s=sys.stdin.read().strip(); print(json.dumps(json.loads(base64.urlsafe_b64decode(s + '=' * (-len(s) % 4))), indent=2))"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -20,10 +25,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::072718159856:role/GitHubActions-EC2-Deploy-Role
           aws-region: ca-central-1
-      - name: Debug - show OIDC token claims
-        run: |
-          TOKEN_VALUE=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
-          echo "$TOKEN_VALUE" | cut -d. -f2 | python3 -c "import sys, base64, json; s=sys.stdin.read().strip(); print(json.dumps(json.loads(base64.urlsafe_b64decode(s + '=' * (-len(s) % 4))), indent=2))"
+
       - name: Deploy to EC2 via SSM
         run: |
           COMMAND_ID=$(aws ssm send-command \
@@ -44,4 +46,4 @@ jobs:
             echo "Deployment FAILED"
             exit 1
           fi
-          echo "Deployment SUCCESSFUL 🎉"
+          echo "Deployment SUCCESSFUL"
